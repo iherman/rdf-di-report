@@ -1,2 +1,2 @@
 # rdf-di-report
-Short, informal report on the rdfjs-di experiences
+Short, informal report on the rdfjs-di experiences.
