@@ -1,23 +1,23 @@
 # Introduction
 
-The [Verifiable Credentials Working Group](https://www.w3.org/groups/wg/vc) is finalizing the [[[vc-data-integrity]]] [[vc-data-integrity]] specification, as well as related "cryptosuites" ([[vc-di-ecdsa]] and [[vc-di-eddsa]]), whose goal is to provide standard means to secure Verifiable Credentials [[vc-data-model-2.0]]. The details of Verifiable Credentials are not important here (the interested reader may want to look at the [[[vc-overview]]] [[vc-overview]] document); suffices it to say that Verifiable Credentials are defined through RDF datasets [[rdf11-concepts]] represented using [[json-ld11]]. These datasets are secured by generating separate _proof graphs_,
-each containing a cryptographic signature. The signature data are expressed in a small [vocabulary](https://w3id.org/security) defined by the [[vc-data-integrity]] specification.
+The [Verifiable Credentials Working Group](https://www.w3.org/groups/wg/vc) is finalizing the [[[vc-data-integrity]]] [[vc-data-integrity]] specification and the related "cryptosuites" specification ([[[vc-di-ecdsa]]] [[vc-di-ecdsa]] and [[[vc-di-eddsa]]] [[vc-di-eddsa]]), whose goal is to provide standard means to secure Verifiable Credentials [[vc-data-model-2.0]]. The details of Verifiable Credentials are not important here (the interested reader may want to look at the [[[vc-overview]]] [[vc-overview]] document); for our purposes it is enough to say that Verifiable Credentials are defined as RDF datasets [[rdf11-concepts]] serialized in [[json-ld11]]. These datasets are secured by generating
+separate _proof graphs_ containing a cryptographic signatures of the dataset. The signatures themselves are expressed using a small [vocabulary](https://w3id.org/security) defined by the [[vc-data-integrity]] specification.
 
-The [[[vc-data-integrity]]] is defined for Verifiable Credentials. It uses a JSON-LD terminology and relies on some specificities of those credentials (more about this later). However, from the very start, an unofficial goal was to make the general approach, the underlying vocabulary, and cryptographic definitions, usable for RDF Datasets in general as well. The question is, therefore: "Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?". As we will see later, the answer to the question is "Almost". The goal of this document is to give a more precise answer, and some additional comments, based on an experimental implementation [[rdfjs-di]] by the author of this report.
+The [[[vc-data-integrity]]] standard uses a JSON-LD terminology and relies on some specificities of Verifiable Credentials (more about this later). However, from the very start, an unofficial goal was to make the standard, the underlying vocabulary, and the cryptosuites usable for general RDF Datasets as well. The question is, therefore: _"Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?"_.  The goal of this document is to give some answers, and some additional comments, on this question based on an experimental implementation [[rdfjs-di]] by the author of this report. As we will see later, the answer to the question is _"Almost"_.
 
 ## Technical basics
 
-It is necessary, to make this document understandable to give some high level overview on the technical approach taken by [[vc-data-integrity]].
+To make this document understandable, some high level overview on the technical approach taken by [[vc-data-integrity]] is necessary.
 
 The operations of Data Integrity are conceptually simple. To create a cryptographic proof, the following steps are performed: 1) Transformation, 2) Hashing, and 3) Proof Generation.
 
 1. _Transformation_ is a takes input data and prepares it for the hashing process. For RDF Datasets this involves the canonicalization of the RDF Datasets using the [[[rdf-canon]]] [[rdf-canon]] specification.
-2. _Hashing_ calculates an identifier for the transformed data using a [cryptographic hash function](https://en.wikipedia.org/wiki/Cryptographic_hash_function); this is also defined by the [[rdf-canon]] specification.
-3. _Proof Generation_ means, for our purposes, to generate a cryptographic signature using asymmetric keys, yielding the signature of the RDF Dataset. The details, defining the necessary vocabulary, is defined in [[vc-data-integrity]] and its adaptation to specific cryptographic schemes in [[[vc-di-eddsa]]] [[vc-di-eddsa]] and [[[vc-di-ecdsa]]] [[vc-di-ecdsa]]. Using other cryptographic schemes (e.g., RSA variants) would also be possible by adapting, say, the [[vc-di-eddsa]] specification.
+2. _Hashing_ calculates a hash value for the transformed data using a [cryptographic hash function](https://en.wikipedia.org/wiki/Cryptographic_hash_function). For RDF Datasets, this is also defined by the [[rdf-canon]] specification.
+3. _Proof Generation_ means to generate a cryptographic signature, using the secret key of an asymmetric crypto key pair, of the hash value calculated in the previous step. The details, i.e., the exact algorithmic steps, the definition of the necessary vocabulary, etc., are defined in [[vc-data-integrity]] specification. The details of the cryptography aspects, using standard cryptographic schemes, are defined in [[vc-di-eddsa]] and [[vc-di-ecdsa]]. Using other cryptographic schemes (e.g., RSA variants) would also be possible by adapting, say, the [[vc-di-eddsa]] specification.
 
-The result of these steps is a _proof graph_ that contains the public key for the signature, the signature value itself, and some metadata. 
+The result of these steps is a _proof graph_ that contains the public key for the signature (or a reference thereof), the signature value itself, and some metadata. 
 
-_Verification_ of a proof involves repeating calculating the hash values on the verifier's side and cryptographically check the signature value against the hash.
+_Verification_ of a proof involves repeating steps (1) and (2) above, yielding the hash value, extract the proof value and the public key from the proof graph, and cryptographically check, using the public key, the signature value against the hash value.
 
 # Generating proof graphs
 
@@ -54,16 +54,16 @@ The corresponding proof graph, as generated by [[rdfjs-di]], and using the EdDSA
     sec:publicKeyMultibase "z6MkqPUPcdvvixcfgGqqEZJ4WZTiDwaCsqF8jHqR5UZA2iae".
 ```
 
-The first resource identifies the signature itself (the cryptographic value being the object of the `sec:proofPurpose` property) with some corresponding metadata.
-The second resource identifies an asymmetric key (encoded using a so-called <a data-cite="controller-document#multikey">Multikey</a> format). The `sec:verificationMethod` provides a "bridge" between these two resources.
+The first resource identifies the signature itself (the cryptographic value being the object of the `sec:proofValue` property) with some additional metadata. The second resource identifies the public key (encoded using a so-called <a data-cite="controller-document#multikey">Multikey</a> format). The `sec:verificationMethod` provides a "bridge" between these two resources, i.e., connecting the signature to the public key that should be used for verification.
 
 # Relating RDF Datasets with their signatures
 
-The previous section may suggest that there is no real issue with the usage of Data Integrity for RDF Datasets, so the answer to the question of the introduction should be "Yes".
+The previous section may suggest that there is no real issue with the usage of Data Integrity for RDF Datasets, so the answer to the question of the introduction should be "Yes". However, there are questions that should also be answered and which do raise problems for the general RDF case. These are:
 
-However, there is question that should also be answered and which does create problems, and that is: "How do I _link_ my Datasets with its proof graph?". Also, another similar question is: "How do I decide which triples must be signed for a given signature?".
+1. How do we define which triples must be signed?
+1. How do we link that Datasets with its proof graph?
 
-For the case of a Verifiable Credentials, it is relatively straightforward to answer these questions. Indeed, the graph of a Credential is usually "tree-like", with the credentials' identifier identifying the root node; it is therefore perfectly fine to consider it as a natural anchor, and the tree itself as the content to be signed. Consider the following, simple Credential (where the `id` property is an alias to the `@id` JSON-LD keyword):
+For the case of a Verifiable Credentials, the answers are straightforward and are based on the nature of Credentials. The graph of a Credential is usually "tree-like", with the credentials' identifier identifying the root node; it is therefore perfectly fine to consider the tree itself as the content to be signed, and link the root of the tree with the proof graph. Consider the following, simple Credential (where the `id` property is an alias to the `@id` JSON-LD keyword):
 
 ```json
 {
@@ -73,7 +73,7 @@ For the case of a Verifiable Credentials, it is relatively straightforward to an
   ],
   "id": "http://university.example/Credential123",
   "type": ["VerifiableCredential", "ExampleAlumniCredential"],
-  "issuer": "did:example:2g55q912ec3476eba2l9812ecbfe",
+  "issuer": "did:c276e12ec21ebfeb1f712ebc6f1",
   "validFrom": "2010-01-01T10:32:24Z",
   "credentialSubject": {
     "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
@@ -86,7 +86,7 @@ For the case of a Verifiable Credentials, it is relatively straightforward to an
 }
 ```
 
-For the Verifiable Credentials case, the Data Integrity specification introduces a `proof` property. The subject of the corresponding triple is the Credential itself, and object of the triple is a named graph that contains a single proof graph. [](#info-graph-vc) (borrowed from the [[vc-data-model-2.0]]) shows the structure in terms of RDF graphs:
+`http://university.example/Credential123` refers to the Credential itself, and the triples emanating, directly or indirectly, from that resource form the RDF graph to be signed. The Data Integrity specification also introduces a `proof` property: the subject of the triple is the Credential itself, and object is a named graph that contains a single proof graph. [](#info-graph-vc) (borrowed from the [[vc-data-model-2.0]]) shows the resulting RDF graphs with a signature for the Credential above:
 
 <figure id="info-graph-vc">
 <img style="margin: auto; display: block; width: 100%;"
@@ -109,16 +109,21 @@ Information graphs associated with a basic verifiable credential
 </figcaption>
 </figure>
 
-However, for general RDF Datasets, there is no such natural anchor nor an obvious way to identify the set of triples or quads that are supposed to be signed. The graph may be a forest or some much more complex directed graph; it may be part of a Dataset as a separate graph or indeed may not, etc. The identification of a graph or a dataset is not really part of the RDF Model.
+However, for general RDF Datasets, there isn't any obvious way to _identify_ (as a resource) a set of triples or quads. The graph may be a forest or some much more complex directed graph; it may be part of a Dataset as a separate named graph or not, it may be in a separate file or part of a triple store, etc. The identification of a graph or a dataset is not really part of the RDF Model.
+
+It is for this reason that the answer to the general question, i.e., "Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?" is "Almost". Any specification that aims to generalize the [[vc-data-integrity]] approach for general RDF Datasets, must provide some answers to those questions.
 
 <p class=note>
-This issue was raised by the late Henry Story on a GitHub repository of the Verifiable Credentials Working Group: <a href="https://github.com/w3c/vc-data-model/issues/1248">issue #1248</a>. The issue was closed without solution: it was recognized as a general problem whose solution would go beyond what the Verifiable Credential Working Group was chartered to do, namely provide a securing solution for Credentials. Obviously, if a group is formed to generalize the [[vc-data-integrity]] approach for general RDF Datasets, this issue must be discussed.
+This issue was raised by the late Henry Story on a GitHub repository of the Verifiable Credentials Working Group: see <a href="https://github.com/w3c/vc-data-model/issues/1248">issue #1248</a>. The issue was closed without any resolution: it was recognized as a general problem whose solution would go beyond what the Verifiable Credential Working Group was chartered to do, namely to provide a securing mechanism _for Verifiable Credentials_.
 </p>
 
-It is for this reason that the answer to the general question, i.e., "Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?" is "Almost"
+## The [[rdfjs-di]] approach
 
-The approach taken by [[rdfjs-di]] is eminently pragmatic. The set of quads that must be signed is defined by the file that contains them, and it is up to the user to explicitly provide an anchor resource when running the code. The code lets the user choose to just generate a separate proof graph which is handled in an application dependent way, or to "embed" the proof graph using the `proof` property, yielding a structure like on [](#info-graph-vc). Here is the generated TriG file for the same example as above:
+The approach taken by [[rdfjs-di]] to handle these issues is eminently pragmatic. 
 
+The basic API (based on the [[[rdfjs-dataset]]] specification) takes an abstract <a data-cite="rdfjs-dataset#dom-datasetcore">`DatasetCore` instance</a> as an input parameter representing an RDF Dataset. This leaves it to the application layer to decide which triples or quads must be signed. Using this API the application generates a separate proof graph, which can then handled in an application-dependent manner.
+
+Another API entry may also "link" the dataset with its proof graph (using the aforementioned `proof` property); this requires an explicit reference to an "anchor" resource. In other words, the decision for the subject of the `proof` triple is again left to the application layer. This second API generates the following "embedded" proof in a new RDF Dataset: 
 
 ```turtle
 @prefix sec: <https://w3id.org/security#>.
@@ -146,3 +151,8 @@ _:b0 {
         sec:publicKeyMultibase "z6MkqPUPcdvvixcfgGqqEZJ4WZTiDwaCsqF8jHqR5UZA2iae".
 }
 ```
+
+
+The structure is identical to the one of [](#info-graph-vc): the proof graph is in a separate named graph referenced by `_:b0`; this reference is also the object of the triple with the `proof` property.
+
+
