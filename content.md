@@ -114,16 +114,16 @@ However, for general RDF Datasets, there isn't any obvious way to _identify_ (as
 It is for this reason that the answer to the general question, i.e., "Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?" is "Almost". Any specification that aims to generalize the [[vc-data-integrity]] approach for general RDF Datasets, must provide some answers to those questions.
 
 <p class=note>
-This issue was raised by the late Henry Story on a GitHub repository of the Verifiable Credentials Working Group: see <a href="https://github.com/w3c/vc-data-model/issues/1248">issue #1248</a>. The issue was closed without any resolution: it was recognized as a general problem whose solution would go beyond what the Verifiable Credential Working Group was chartered to do, namely to provide a securing mechanism _for Verifiable Credentials_.
+This issue was raised by Henry Story on a GitHub repository of the Verifiable Credentials Working Group: see <a href="https://github.com/w3c/vc-data-model/issues/1248">issue #1248</a>. The issue was closed without any resolution: it was recognized as a general problem whose solution would go beyond what the Verifiable Credential Working Group was chartered to do, namely to provide a securing mechanism _for Verifiable Credentials_.
 </p>
 
 ## The [[rdfjs-di]] approach
 
-The approach taken by [[rdfjs-di]] to handle these issues is eminently pragmatic. 
+The approach taken by [[rdfjs-di]] to handle these issues is pragmatic: let the application control these problems. 
 
-The basic API (based on the [[[rdfjs-dataset]]] specification) takes an abstract <a data-cite="rdfjs-dataset#dom-datasetcore">`DatasetCore` instance</a> as an input parameter representing an RDF Dataset. This leaves it to the application layer to decide which triples or quads must be signed. Using this API the application generates a separate proof graph, which can then handled in an application-dependent manner.
+The basic [API](https://iherman.github.io/rdfjs-di/modules/index.html) (based on the [[[rdfjs-dataset]]] specification) takes an abstract <a data-cite="rdfjs-dataset#dom-datasetcore">`DatasetCore` instance</a> as an input parameter representing an RDF Dataset. This leaves it to the application layer to decide which triples or quads must be signed. Using this API the application generates a detached proof graph, which can then be used in an application-dependent manner.
 
-Another API entry may also "link" the dataset with its proof graph (using the aforementioned `proof` property); this requires an explicit reference to an "anchor" resource. In other words, the decision for the subject of the `proof` triple is again left to the application layer. This second API generates the following "embedded" proof in a new RDF Dataset: 
+Another API entry generates an "embedded" proof graph: a new RDF Dataset that includes the original input Dataset _and_ the proof graph as a separate named graph. If the input arguments include an explicit reference to an "anchor" resource, this is used as the subject of a proof triple (using the `proof` property) linking the anchor to the proof. The following, embedded proof can be generated from the original example: 
 
 ```turtle
 @prefix sec: <https://w3id.org/security#>.
@@ -152,7 +152,50 @@ _:b0 {
 }
 ```
 
-
 The structure is identical to the one of [](#info-graph-vc): the proof graph is in a separate named graph referenced by `_:b0`; this reference is also the object of the triple with the `proof` property.
+
+This pragmatic answer may be the best approach for RDF Datasets in general, with specific applications, or application classes, setting up their own rules. From such a general viewpoint, that is what the [[vc-data-integrity]] specification does for Verifiable Credentials.
+
+# Algorithmic efficiency
+
+Another aspect that must be considered is the efficiency of the data integrity approach for graphs in general. A fundamental difference between Verifiable Credentials and general RDF Datasets is the possible size of RDF Graphs. Verifiable Credentials are relatively small, in the range of a few dozen RDF quads. Compare it to, say, some of the medical ontologies (when represented in RDF) which may contain several hundred of thousands triples or more.
+
+<p class=note>
+The case of biomedical ontologies is interesting, because securing the integrity of those is an obvious use case. 
+For example, the <a href="https://bioportal.bioontology.org/ontologies">BioPortal</a> lists some of these ontologies. Although the portal does not show the exact sizes in terms of triples, the number of classes is already significant: each class is probably represented with the average of at least 5-6 RDF triples.
+</p>
+
+The RDF canonicalization step, and the hash calculation that follows, are the sources of a significant complexity. Canonicalization means traversing the datasets possibly several times in search of blank nodes and eventually renaming them. Hashing means the serialization of all the triples into n-quads, and then sorting and concatenating them before calculating the dataset's hash. Everything may have to be performed through database queries if the Datasets are part of a triple store. While all these steps are fine for Verifiable Credentials due to their small size, they may become a source of problems for general Datasets.
+
+One line of future work might be to reconsider some of the algorithmic steps for specific categories of datasets. For example, if an RDF Dataset consists of "b-node disjoint" named graphs (i.e., no two graphs share any b-node), the calculation of a hash can be done by using the [Merkle Trees](https://en.wikipedia.org/wiki/Merkle_tree), widely used in the crypto community (see some further thoughts on that in a separate [gist](https://gist.github.com/iherman/40174d81be4b08ab43444c236d2181df)). Other categorizations and adaptations might be necessary for a wider usage of [[vc-data-integrity]] for RDF Datasets.
+
+It may also be worth looking at the [[vc-data-integrity]] algorithmic steps themselves to see if efficiency problems might be avoided. The author has noted two, relatively minor, aspects that may be worth reconsidering: the hash function usage in the [[rdf-canon]] algorithm and the way proof chains are secured.
+
+## Hash function in canonicalization
+
+The hash function used in [[rdf-canon]] is, by default, SHA-256. This function is used at two places: this is the hash function used for the canonicalization itself, and also to calculate the final hash. However, the [[[rdf-canon]]] specification stipulates that a conforming implementation could be used with another hash function. Note that, strictly speaking, there is no requirement, in general, to use the same hash functions for these two roles.
+
+This feature is exploited by [[[vc-di-ecdsa]]]: when calculating the hash of the data _and_ the P-384 is used, the requirement is that [[rdf-canon]] must use SHA-384. This may become a problem if, for the same dataset, several proofs were calculated to form <a data-cite="vc-data-integrity#proof-sets">_proof sets_</a> or  <a data-cite="vc-data-integrity#proof-chains">_proof chains_</a> with, e.g., ECDSA using P-256 and P-384, respectively. This indeed forces the implementation to re-canonicalize the input dataset using two different hashing functions. While using SHA-384 for the hashing of the sorted, canonicalized n-quads might be explainable, it is unclear what the algorithm gains by enforcing SHA-384 on the canonicalization step itself. At first glance, it looks like an unnecessary load on the signing process with no clear gain.
+
+<p class=note>It may be that there are regulatory reasons that require SHA-384 in every step of a signature. In which case there may be no choice…</p>
+
+## Proof chains
+
+The [[vc-data-integrity]] specification introduces the notion of  <a data-cite="vc-data-integrity#proof-chains">_proof chains_</a>: the same dataset is signed by several keys, but the order of those keys are significant. Conceptually, it defines the order in which the datasets must be signed/verified (as opposed to <a data-cite="vc-data-integrity#proof-sets">_proof sets_</a> which simply consists of several, independent signatures). Cryptographically, this means that the signatures should "sign over" the previous signature in the chain (if applicable). 
+
+Technically, this means the signature by <em>key<sub>i</em> should be used to verify _both_ the original dataset _and_ the signature provided by <em>key<sub>i-1</em>. In [[vc-data-integrity]] this is achieved by the requirement to merge the original dataset <em>D</em> and the proof graph created <em>PG<sub>i-1</sub></em>. Ie, in practice:
+
+1. Refactor blank nodes in <em>PG<sub>i-1</sub></em> to avoid clashes with blank nodes in <em>D</em>
+2. Perform the canonicalization and the hash of <em>D+PG<sub>i-1</sub></em>
+3. Sign the hash value
+
+All steps, except the last, are costly if <em>D</em> is large. For RDF Datasets in general it would be way better to do something like:
+
+1. Perform the canonicalization and the hash of <em>PG<sub>i-1</sub></em>, resulting in <em>h<sub>i-1</sub></em>
+2. Concatenate the hash of <em>D</em> (which has to be calculated only once) with <em>h<sub>i-1</sub></em>
+3. Sign the concatenated hash values
+
+This would achieve the same "signing over" requirement with, possibly, fraction of the costs…
+
 
 
