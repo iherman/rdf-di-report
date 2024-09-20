@@ -11,7 +11,7 @@ To make this document understandable, some high level overview on the technical 
 
 The operations of Data Integrity are conceptually simple. To create a cryptographic proof, the following steps are performed: 1) Transformation, 2) Hashing, and 3) Proof Generation.
 
-1. _Transformation_ is a takes input data and prepares it for the hashing process. For RDF Datasets this involves the canonicalization of the RDF Datasets using the [[[rdf-canon]]] [[rdf-canon]] specification.
+1. _Transformation_ takes input data and prepares it for the hashing process. For RDF Datasets this involves the canonicalization of the RDF Datasets using the [[[rdf-canon]]] [[rdf-canon]] specification.
 2. _Hashing_ calculates a hash value for the transformed data using a [cryptographic hash function](https://en.wikipedia.org/wiki/Cryptographic_hash_function). For RDF Datasets, this is also defined by the [[rdf-canon]] specification.
 3. _Proof Generation_ means to generate a cryptographic signature, using the secret key of an asymmetric crypto key pair, of the hash value calculated in the previous step. The details, i.e., the exact algorithmic steps, the definition of the necessary vocabulary, etc., are defined in [[vc-data-integrity]] specification. The details of the cryptography aspects, using standard cryptographic schemes, are defined in [[vc-di-eddsa]] and [[vc-di-ecdsa]]. Using other cryptographic schemes (e.g., RSA variants) would also be possible by adapting, say, the [[vc-di-eddsa]] specification.
 
@@ -112,6 +112,10 @@ Information graphs associated with a basic verifiable credential
 The [[vc-data-integrity]] specification actually defines an "embedded" proof, whereby the original dataset and the proof graph are presented together as one dataset with the `proof` property connecting the two.
 
 However, for general RDF Datasets, there isn't any obvious way to _identify_ (as a resource) a set of triples or quads. The graph may be a forest or some much more complex directed graph; it may be part of a Dataset as a separate named graph or not, it may be in a separate file or part of a triple store, etc. The identification of a graph or a dataset is not really part of the RDF Model.
+
+<p class=note>
+A pragmatic approach would be to use the <em>URL of the resource</em> as an identification of a graph or a dataset contained therein (when applicable). This is, obviously, a valid approach, but also raises RDF modeling questions: does that URL really <strong><em>identify</em></strong> the graph or the dataset? What happens if the URL changes but the content remains unchanged? How does this relate to the notion of a Default Graph for RDF datasets (if the resource contains a single graph)?
+</p>
 
 It is for this reason that the answer to the general question, i.e., "Is it possible, using the [[[vc-data-integrity]]] specification, to secure, via cryptographic signatures, RDF Datasets in general?" is "Almost". Any specification that aims to generalize the [[vc-data-integrity]] approach for general RDF Datasets, must provide some answers to those questions and may provide means to connect a dataset to its proof and, vice versa, a proof to the dataset it signs.
 
