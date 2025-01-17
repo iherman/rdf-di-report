@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <title>Experiences with Data Integrity used in RDF Datasets</title>
     <script src="https://www.w3.org/Tools/respec/respec-w3c" class="remove" defer></script>
+    <script>
+        function remove_w3c_url() {
+            const sotd = document.getElementById("sotd");
+            const p = sotd.getElementsByTagName('p')[0];
+            sotd.removeChild(p);
+        }
+    </script>
     <script class="remove">
         // All config options at https://respec.org/docs/
         var respecConfig = {
@@ -18,31 +25,10 @@
             github: "https://github.com/iherman/rdf-di-report",
             shortName: "rdf-di-report",
             format: "markdown",
+            postProcess : [remove_w3c_url],
             // xref: ["INFRA", "vc-data-model-2.0", "vc-data-integrity", "controller-document"],
             // group: "vc",
             localBiblio: {
-                "multibase": {
-                    title: "The Multibase Data Format",
-                    date: "February 2023",
-                    href: "https://datatracker.ietf.org/doc/draft-multiformats-multibase",
-                    authors: [
-                        "Juan Benet",
-                        "Manu Sporny"
-                    ],
-                    status: "Internet-Draft",
-                    publisher: "IETF"
-                },
-                "multihash": {
-                    title: "The Multihash Data Format",
-                    date: "February 2023",
-                    href: "https://datatracker.ietf.org/doc/draft-multiformats-multihash",
-                    authors: [
-                        "Juan Benet",
-                        "Manu Sporny"
-                    ],
-                    status: "Internet-Draft",
-                    publisher: "IETF"
-                },
                 "multicodec": {
                     title: "The Multi Codec Encoding Scheme",
                     date: "February 2022",
@@ -55,7 +41,7 @@
                 },
                 "rdfjs-di": {
                     title: "Data Integrity algorithms for RDF Datasets — Proof of concepts implementation",
-                    date: "August 2024",
+                    date: "November 2024",
                     author: [
                         "Ivan Herman"
                     ],
@@ -63,7 +49,7 @@
                 },
                 "multikey-webcrypto": {
                     title: "Multikey ↔︎ WebCrypto and JWK conversions",
-                    date: "August 2024",
+                    date: "December 2024",
                     author: [
                         "Ivan Herman"
                     ],
